@@ -73,3 +73,38 @@ app.use("/", postRoutes);
 const server = app.listen(port, () => {
     console.log("App is running on port " + port);
 });
+
+/* WebSocket setup */
+const io = socket(server);
+
+const room = io.of("/chat");
+room.on("connetion", socket => {
+    console.log("new user : ", socket.io);
+
+    room.emit("newUser", { socketID: socket.id });
+
+    socket.on("newUser", data => {
+        if (!(data.name in onlineChatUsers)){
+            onlineChatUsers[data.name] = data.socketID;
+            socket.name = data.name;
+            room.emit("updateUserList", Object.keys(onlineChatUsers));
+            console.log("Online users: " + Object.keys(onlineChatUsers));
+        }
+    });
+
+    socket.on("disconnect", () => {
+        delete onlineChatUsers[socket.name];
+        room.emit("updateUserList", object.keys(onlineChatUsers));
+        console.log(`user ${socket.name} disconnected`);
+    });
+
+    socket.on("chat", data => {
+        console.log(data);
+        if (data.to === "Global Chat"){
+            room.emit("chat", data);
+        } else if (data.to) {
+            room.to(onlineChatUsers[data.name]).emit("chat", data);
+            room.to(onlineChatUsers[data.to]).emit("chat", data);
+        }
+    });
+});
