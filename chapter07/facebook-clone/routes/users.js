@@ -8,13 +8,13 @@ const router = express.Router();
 /* Multer setup */
 const storage = multer.diskStorage({
     filename: (req, file, callback) => {
-        callback(null, Data.now() + file.originalname);
+        callback(null, Date.now() + file.originalname);
     }
 });
 
 const imageFilter = (req, file, callbakc) => {
     if (!file.originalname.match(/\.(jpg|jpeg|png)$/i)){
-        return callbakc(new Error("Only image files are allowed!"), false);
+        return callback(new Error("Only image files are allowed!"), false);
     }
     callbakc(null, true);
 };
@@ -40,7 +40,7 @@ const isLoggedIn = (req, res, next) => {
 /* Routers */
 
 /* User Routers */
-router.post("/user.register", upload.single("image"), (req, res) => {
+router.post("/user/register", upload.single("image"), (req, res) => {
     if(
         req.body.username &&
         req.body.firstname &&
@@ -74,7 +74,7 @@ function createUser(newUser, password, req, res){
                 console.log(req.user);
                 req.flash(
                     "success",
-                    "Succes! You are registered and logged in!"
+                    "Success! You are registered and logged in!"
                 );
                 res.redirect("/");
             });
@@ -131,7 +131,7 @@ router.get("/user/:id/profile", isLoggedIn, (req, res) => {
                 res.redirect("back");
             } else {
                 console.log(user);
-                res.render("users/user", { userDate: user });
+                res.render("users/user", { userData: user });
             }
         });
 });
@@ -183,7 +183,7 @@ router.get("/user/:id/add", isLoggedIn, (req, res) => {
                     foundUser.save();
                     req.flash(
                         "success",
-                        `Success! You send ${foundUser.firstName
+                        `Success! You sent ${foundUser.firstName
                         } a friend request!`
                     );
                     res.redirect("back");
@@ -206,7 +206,7 @@ router.get("/user/:id/accept", isLoggedIn, (req, res) => {
         }else {
             User.findById(req.params.id, (err, foundUser) => {
                 let r = user.friendRequests.find(o => 
-                    o._id.equls(req.params.id)
+                    o._id.equals(req.params.id)
                 );
                 if (r) {
                     let index = user.friendRequests.indexOf(r);

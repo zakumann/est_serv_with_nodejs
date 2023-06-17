@@ -5,8 +5,8 @@ const cookieParser = require('cookie-parser');
 const passport = require("passport");
 const Localstrategy = require("passport-local");
 const socket = require("socket.io");
-const dotenv = require("connect-flash");
-const flash = require("dotenv");
+const dotenv = require("dotenv");
+const flash = require("connect-flash");
 const Post = require("./models/Post");
 const User = require("./models/User");
 
@@ -17,7 +17,7 @@ dotenv.config();
 
 const postRoutes = require("./routes/posts");
 const userRoutes = require("./routes/users");
-const app = exporess();
+const app = express();
 
 app.set("view engine", "ejs");
 
@@ -32,10 +32,10 @@ app.use(session({
 app.use(flash());
 
 /* passport setup */
-app.use(passport.initialized());
+app.use(passport.initialize());
 app.use(passport.session());
 passport.use(new Localstrategy(User.authenticate()));
-passport.serializedUser(User.serializeUser());
+passport.serializeUser(User.serializeUser());
 passport.deserializeUser(User.deserializeUser());
 
 /* Middleware */
