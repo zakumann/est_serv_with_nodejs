@@ -1,10 +1,11 @@
 const express = require("express");
 const Post = require("../models/Post");
 const User = require("../models/User");
-const Comment = require("../models/Comments");
+const Comment = require("../models/Comment");
 const multer = require("multer");
 const cloudinary = require("cloudinary");
 const router = express.Router();
+const sanitize = require('sanitize-html');
 
 // Multer setup
 const storage = multer.diskStorage({
@@ -165,7 +166,7 @@ router.post("/post/new", isLoggedIn, upload.single("image"), (req, res) => {
                 newPost.creator = req.user;
                 newPost.time = new Date();
                 newPost.likes = 0;
-                newPost.content = req.body.content;
+                newPost.content = sanitize(req.body.content);
                 return createPost(newPost, req, res);
             });
         } else {
@@ -173,7 +174,7 @@ router.post("/post/new", isLoggedIn, upload.single("image"), (req, res) => {
             newPost.creator = req.user;
             newPost.time = new Date();
             newPost.likes = 0;
-            newPost.content = req.body.content;
+            newPost.content = sanitize(req.body.content);
             return createPost(newPost, req, res);
         }
     }

@@ -4,6 +4,8 @@ const passport = require("passport");
 const multer = require("multer");
 const cloudinary = require("cloudinary");
 const router = express.Router();
+const csrf = require('csurf');
+const csrfProtection = csrf({ cookie: true });
 
 /* Multer setup */
 const storage = multer.diskStorage({
@@ -12,25 +14,25 @@ const storage = multer.diskStorage({
     }
 });
 
-const imageFilter = (req, file, callbakc) => {
-    if (!file.originalname.match(/\.(jpg|jpeg|png)$/i)){
+const imageFilter = (req, file, callback) => {
+    if (!file.originalname.match(/\.(jpg|jpeg|png)$/i)) {
         return callback(new Error("Only image files are allowed!"), false);
     }
-    callbakc(null, true);
+    callback(null, true);
 };
 
 const upload = multer({ storage: storage, fileFilter: imageFilter });
 
-/* cloudinary setup */
+/* Cloudinary setup */
 cloudinary.config({
-    cloud_name: process.env_CLOUDINARY_CLOUD_NAME,
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
 /* Middleware */
 const isLoggedIn = (req, res, next) => {
-    if (req.isAuthenticated()){
+    if (req.isAuthenticated()) {
         return next();
     }
     req.flash("error", "You need to be logged in to do that!");
@@ -41,30 +43,30 @@ const isLoggedIn = (req, res, next) => {
 
 /* User Routers */
 router.post("/user/register", upload.single("image"), (req, res) => {
-    if(
+    if (
         req.body.username &&
         req.body.firstname &&
         req.body.lastname &&
         req.body.password
-    ){
-        let newUser = new User ({
+    ) {
+        let newUser = new User({
             username: req.body.username,
             firstName: req.body.firstname,
             lastName: req.body.lastname
         });
-        if (req.file){
-            cloudinary.UploadStream.upload(req.file.path, result => {
+        if (req.file) {
+            cloudinary.uploader.upload(req.file.path, result => {
                 newUser.profile = result.secure_url;
                 return createUser(newUser, req.body.password, req, res);
             });
-        }else {
+        } else {
             newUser.profile = process.env.DEFAULT_PROFILE_PIC;
             return createUser(newUser, req.body.password, req, res);
         }
     }
 });
 
-function createUser(newUser, password, req, res){
+function createUser(newUser, password, req, res) {
     User.register(newUser, password, (err, user) => {
         if (err) {
             req.flash("error", err.message);
@@ -83,12 +85,13 @@ function createUser(newUser, password, req, res){
 }
 
 // Login
-router.get("/user/login", (req, res) => {
-    res.render("users/login");
+router.get("/user/login", csrfProtection, (req, res) => {
+    res.render("users/login", { csrfToken: req.csrfToken() });
 });
 
 router.post(
     "/user/login",
+    csrfProtection,
     passport.authenticate("local", {
         successRedirect: "/",
         failureRedirect: "/user/login"
@@ -106,7 +109,7 @@ router.get("/user/all", isLoggedIn, (req, res) => {
                 "There has been a problem getting all users info."
             );
             res.redirect("/");
-        }else {
+        } else {
             res.render("users/users", { users: users });
         }
     });
@@ -146,7 +149,7 @@ router.get("/user/:id/add", isLoggedIn, (req, res) => {
                 "There has been an error adding this person to your friends list"
             );
             res.redirect("back");
-        }else {
+        } else {
             User.findById(req.params.id, (err, foundUser) => {
                 if (err) {
                     console.log(err);
@@ -154,19 +157,19 @@ router.get("/user/:id/add", isLoggedIn, (req, res) => {
                     res.redirect("back");
                 } else {
                     if (
-                        foundUser.friendRequests.find(o => 
+                        foundUser.friendRequests.find(o =>
                             o._id.equals(user._id)
                         )
-                    ){
+                    ) {
                         req.flash(
                             "error",
                             `You have already sent a friend request to ${user.firstName
                             }`
                         );
                         return res.redirect("back");
-                    }else if (
-                        foundUser.friends.find( o => o._id.equals(user._id))
-                    ){
+                    } else if (
+                        foundUser.friends.find(o => o._id.equals(user._id))
+                    ) {
                         req.flash(
                             "error",
                             `The user ${foundUser.firstname
@@ -196,16 +199,16 @@ router.get("/user/:id/add", isLoggedIn, (req, res) => {
 // Accept friend request
 router.get("/user/:id/accept", isLoggedIn, (req, res) => {
     User.findById(req.user._id, (err, user) => {
-        if (err){
+        if (err) {
             console.log(err);
             req.flash(
                 "error",
                 "There has been an error finding your profile, are you connected?"
             );
             res.redirect("back");
-        }else {
+        } else {
             User.findById(req.params.id, (err, foundUser) => {
-                let r = user.friendRequests.find(o => 
+                let r = user.friendRequests.find(o =>
                     o._id.equals(req.params.id)
                 );
                 if (r) {
@@ -252,19 +255,19 @@ router.get("/user/:id/decline", isLoggedIn, (req, res) => {
             res.redirect("back");
         } else {
             User.findById(req.params.id, (err, foundUser) => {
-                if (err){
+                if (err) {
                     console.log(err);
                     req.flash(
                         "error",
                         "There has been an error declining the request"
                     );
                     res.redirect("back");
-                }else {
-                    //remove request
-                    let r = user.friendRequests.find(o => 
+                } else {
+                    // remove request
+                    let r = user.friendRequests.find(o =>
                         o._id.equals(foundUser._id)
                     );
-                    if (r){
+                    if (r) {
                         let index = user.friendRequests.indexOf(r);
                         user.friendRequests.splice(index, 1);
                         user.save();
@@ -289,7 +292,7 @@ router.get("/chat", isLoggedIn, (req, res) => {
                     "There has been an error trying to access the chat"
                 );
                 res.redirect("/");
-            }else {
+            } else {
                 res.render("users/chat", { userData: user });
             }
         });
